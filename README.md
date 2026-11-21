@@ -13,7 +13,8 @@ Two surfaces, one plugin:
 ```
 
 Each number is the **used** share of that window. The last field is the time until the 5-hour window
-resets. Percentages turn amber at 90% and red (with `!`) when a window is exhausted.
+resets. In the desktop pill, percentages are green up to 50%, yellow above that, and red (with `!`) once
+a window is at 90% or exhausted; the TUI uses the terminal theme and turns amber at 90%.
 
 ## Requirements
 

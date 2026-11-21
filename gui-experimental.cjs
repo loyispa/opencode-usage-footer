@@ -10,13 +10,15 @@ const DEFAULT_INTERVAL_MS = 60_000
 const CLOCK_MS = 30_000
 const SEPARATOR = " | "
 
-const HUES = {
-  rolling: "#3b82f6",
-  weekly: "#a855f7",
-  monthly: "#14b8a6",
-}
-const WARNING = "#f5a524"
+// Usage numbers are colored by how much of the limit is spent:
+// green up to half, then yellow, then red near the limit.
+const SCALE = [
+  { upTo: 50, color: "#22c55e" }, // 绿
+  { upTo: 89, color: "#f5a524" }, // 黄
+  { upTo: Infinity, color: "#e5484d" }, // 红
+]
 const DANGER = "#e5484d"
+const RESET = "#a855f7"
 
 function formatPercent(meter) {
   return `${Math.round(meter.percent)}%${meter.limited ? "!" : ""}`
@@ -34,10 +36,10 @@ function formatDuration(ms) {
   return rest ? `${days}d${rest}h` : `${days}d`
 }
 
-function valueColor(kind, meter) {
+function valueColor(meter) {
   if (meter.limited) return DANGER
-  if (meter.percent >= 90) return WARNING
-  return HUES[kind]
+  const used = Math.round(meter.percent)
+  return SCALE.find((step) => used <= step.upTo).color
 }
 
 function element(tag, text, style) {
@@ -76,9 +78,9 @@ module.exports = Plugin.define({
 
     function meters() {
       return [
-        ["rolling", "5h", limits.rolling],
-        ["weekly", "wk", limits.weekly],
-        ["monthly", "mo", limits.monthly],
+        ["5h", limits.rolling],
+        ["wk", limits.weekly],
+        ["mo", limits.monthly],
       ]
     }
 
@@ -86,15 +88,15 @@ module.exports = Plugin.define({
       if (!card || !limits) return
       if (hint) hint.style.display = usageURL ? "block" : "none"
       grid.replaceChildren()
-      for (const [kind, name, meter] of meters()) {
+      for (const [name, meter] of meters()) {
         grid.append(
           element("span", name, { opacity: "0.6" }),
           element("span", formatPercent(meter), {
-            color: valueColor(kind, meter),
+            color: valueColor(meter),
             fontWeight: "600",
             textAlign: "right",
           }),
-          element("span", `resets in ${formatDuration(meter.resetsAt - Date.now())}`, { opacity: "0.75" }),
+          element("span", `resets in ${formatDuration(meter.resetsAt - Date.now())}`, { color: RESET, opacity: "0.9" }),
         )
       }
     }
@@ -125,12 +127,12 @@ module.exports = Plugin.define({
         return
       }
 
-      for (const [index, [kind, name, meter]] of meters().entries()) {
+      for (const [index, [name, meter]] of meters().entries()) {
         if (index > 0) pill.append(element("span", SEPARATOR, { opacity: "0.4" }))
-        pill.append(element("span", formatPercent(meter), { color: valueColor(kind, meter), fontWeight: "600" }))
+        pill.append(element("span", formatPercent(meter), { color: valueColor(meter), fontWeight: "600" }))
       }
       pill.append(element("span", SEPARATOR, { opacity: "0.4" }))
-      pill.append(element("span", formatDuration(limits.rolling.resetsAt - Date.now()), { opacity: "0.65" }))
+      pill.append(element("span", formatDuration(limits.rolling.resetsAt - Date.now()), { color: RESET, opacity: "0.9" }))
 
       pill.setAttribute("aria-label", "OpenCode Go usage")
       pill.style.cursor = usageURL ? "pointer" : "default"
